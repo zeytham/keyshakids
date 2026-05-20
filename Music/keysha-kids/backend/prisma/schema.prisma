@@ -1,0 +1,283 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ============================================================
+// USERS & ROLES
+// ============================================================
+enum Role {
+  OWNER
+  CASHIER
+}
+
+enum PaymentType {
+  CASH
+  CREDIT
+  PARTIAL
+}
+
+enum DebtStatus {
+  PENDING
+  PARTIAL
+  PAID
+}
+
+enum StockMovementType {
+  IN
+  OUT
+  ADJUSTMENT
+}
+
+model User {
+  id           String   @id @default(uuid())
+  name         String
+  role         Role     @default(CASHIER)
+  phone        String?  @unique
+  pinHash      String?
+  passwordHash String?
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  sales            Sale[]
+  stockAdjustments StockAdjustment[]
+  auditLogs        AuditLog[]
+  debtPayments     DebtPayment[]
+
+  @@map("users")
+}
+
+// ============================================================
+// CATEGORIES & SUBCATEGORIES
+// ============================================================
+model Category {
+  id        String   @id @default(uuid())
+  name      String   @unique
+  createdAt DateTime @default(now())
+
+  subCategories SubCategory[]
+  products      Product[]
+
+  @@map("categories")
+}
+
+model SubCategory {
+  id         String   @id @default(uuid())
+  name       String
+  categoryId String
+  createdAt  DateTime @default(now())
+
+  category Category  @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  products Product[]
+
+  @@unique([name, categoryId])
+  @@map("sub_categories")
+}
+
+// ============================================================
+// PRODUCTS & INVENTORY
+// ============================================================
+model Product {
+  id             String   @id @default(uuid())
+  name           String
+  categoryId     String
+  subCategoryId  String?
+  size           String?
+  color          String?
+  costPrice      Decimal  @db.Decimal(10, 2)
+  sellingPrice   Decimal  @db.Decimal(10, 2)
+  stockQuantity  Int      @default(0)
+  minStockAlert  Int      @default(5)
+  supplier       String?
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  category      Category     @relation(fields: [categoryId], references: [id])
+  subCategory   SubCategory? @relation(fields: [subCategoryId], references: [id])
+  priceHistory  PriceHistory[]
+  stockHistory  StockHistory[]
+  saleItems     SaleItem[]
+  stockAdjustments StockAdjustment[]
+
+  @@map("products")
+}
+
+model PriceHistory {
+  id               String   @id @default(uuid())
+  productId        String
+  oldCostPrice     Decimal  @db.Decimal(10, 2)
+  newCostPrice     Decimal  @db.Decimal(10, 2)
+  oldSellingPrice  Decimal  @db.Decimal(10, 2)
+  newSellingPrice  Decimal  @db.Decimal(10, 2)
+  changedAt        DateTime @default(now())
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@map("price_history")
+}
+
+model StockHistory {
+  id          String            @id @default(uuid())
+  productId   String
+  type        StockMovementType
+  quantity    Int
+  reason      String?
+  referenceId String?
+  createdAt   DateTime          @default(now())
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@map("stock_history")
+}
+
+model StockAdjustment {
+  id        String   @id @default(uuid())
+  productId String
+  userId    String
+  oldQty    Int
+  newQty    Int
+  reason    String
+  createdAt DateTime @default(now())
+
+  product Product @relation(fields: [productId], references: [id])
+  user    User    @relation(fields: [userId], references: [id])
+
+  @@map("stock_adjustments")
+}
+
+// ============================================================
+// CUSTOMERS & DEBTS
+// ============================================================
+model Customer {
+  id          String   @id @default(uuid())
+  name        String
+  phone       String   @unique
+  creditLimit Decimal  @default(0) @db.Decimal(10, 2)
+  totalDebt   Decimal  @default(0) @db.Decimal(10, 2)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  sales        Sale[]
+  debts        Debt[]
+  debtPayments DebtPayment[]
+  notifications Notification[]
+
+  @@map("customers")
+}
+
+model Debt {
+  id              String     @id @default(uuid())
+  customerId      String
+  saleId          String?    @unique
+  totalAmount     Decimal    @db.Decimal(10, 2)
+  paidAmount      Decimal    @default(0) @db.Decimal(10, 2)
+  remainingAmount Decimal    @db.Decimal(10, 2)
+  status          DebtStatus @default(PENDING)
+  dueDate         DateTime?
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+
+  customer     Customer      @relation(fields: [customerId], references: [id])
+  sale         Sale?         @relation(fields: [saleId], references: [id])
+  debtPayments DebtPayment[]
+
+  @@map("debts")
+}
+
+model DebtPayment {
+  id            String   @id @default(uuid())
+  debtId        String
+  customerId    String
+  amountPaid    Decimal  @db.Decimal(10, 2)
+  receiptNumber String   @unique @default(uuid())
+  paymentDate   DateTime @default(now())
+  receivedBy    String
+
+  debt     Debt @relation(fields: [debtId], references: [id])
+  customer Customer @relation(fields: [customerId], references: [id])
+  user     User @relation(fields: [receivedBy], references: [id])
+
+  @@map("debt_payments")
+}
+
+// ============================================================
+// SALES & POS
+// ============================================================
+model Sale {
+  id            String      @id @default(uuid())
+  receiptNumber String      @unique @default(uuid())
+  cashierId     String
+  customerId    String?
+  totalAmount   Decimal     @db.Decimal(10, 2)
+  discount      Decimal     @default(0) @db.Decimal(10, 2)
+  paidAmount    Decimal     @db.Decimal(10, 2)
+  paymentType   PaymentType
+  isVoided      Boolean     @default(false)
+  voidReason    String?
+  voidedAt      DateTime?
+  createdAt     DateTime    @default(now())
+
+  cashier   User      @relation(fields: [cashierId], references: [id])
+  customer  Customer? @relation(fields: [customerId], references: [id])
+  saleItems SaleItem[]
+  debt      Debt?
+
+  @@map("sales")
+}
+
+model SaleItem {
+  id         String  @id @default(uuid())
+  saleId     String
+  productId  String
+  quantity   Int
+  unitPrice  Decimal @db.Decimal(10, 2)
+  costPrice  Decimal @db.Decimal(10, 2)
+  subtotal   Decimal @db.Decimal(10, 2)
+
+  sale    Sale    @relation(fields: [saleId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id])
+
+  @@map("sale_items")
+}
+
+// ============================================================
+// AUDIT LOGS
+// ============================================================
+model AuditLog {
+  id          String   @id @default(uuid())
+  userId      String
+  action      String
+  module      String
+  description String
+  oldValue    Json?
+  newValue    Json?
+  ipAddress   String?
+  createdAt   DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@map("audit_logs")
+}
+
+// ============================================================
+// NOTIFICATIONS
+// ============================================================
+model Notification {
+  id              String   @id @default(uuid())
+  customerId      String
+  type            String
+  message         String
+  whatsappStatus  String   @default("PENDING")
+  sentAt          DateTime?
+  createdAt       DateTime @default(now())
+
+  customer Customer @relation(fields: [customerId], references: [id])
+
+  @@map("notifications")
+}
