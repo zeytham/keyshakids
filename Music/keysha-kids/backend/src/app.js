@@ -8,6 +8,8 @@ const { errorHandler, notFound } = require('./middleware/errorHandler');
 const { RATE_LIMIT_WINDOW_MS, RATE_LIMIT_MAX } = require('./config/constants');
 const backupRoutes = require('./routes/backup.routes')
 const app = express();
+// Trust Railway proxy
+app.set('trust proxy', 1)
 
 // ============================================================
 // SECURITY MIDDLEWARE
