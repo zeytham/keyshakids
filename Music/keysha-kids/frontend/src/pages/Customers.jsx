@@ -4,7 +4,7 @@ import api from '../utils/api'
 import toast from 'react-hot-toast'
 import { Plus, Search, Users, Phone, CreditCard, X, Edit, ShoppingBag, TrendingUp, UserCheck, AlertCircle } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
-
+import { validateName, validatePhone, validateCreditLimit } from '../utils/validation'
 const Modal = ({ title, onClose, children, wide }) => (
   <div className="modal-overlay">
     <div className="modal-box" style={{ maxWidth: wide ? '560px' : '440px' }}>
@@ -73,9 +73,14 @@ export default function Customers() {
 
   const handleSubmit = (e) => {
     e.preventDefault()
-    if (!form.name || !form.phone) return toast.error('Jaza taarifa zote!')
-    if (modal === 'add') createCustomer.mutate(form)
-    else if (modal === 'edit') updateCustomer.mutate({ id: selected.id, data: form })
+    const nameError = validateName(form.name)
+    if (nameError) return toast.error(nameError)
+    const phoneError = validatePhone(form.phone)
+    if (phoneError) return toast.error(phoneError)
+    const limitError = validateCreditLimit(form.creditLimit)
+    if (limitError) return toast.error(limitError)
+    if (modal === 'add') createCustomer.mutate({ name: form.name.trim(), phone: form.phone.trim(), creditLimit: form.creditLimit || 0 })
+    else if (modal === 'edit') updateCustomer.mutate({ id: selected.id, data: { name: form.name.trim(), phone: form.phone.trim(), creditLimit: form.creditLimit || 0 } })
   }
 
   // Summary stats
@@ -291,14 +296,20 @@ export default function Customers() {
             <div className="form-group">
               <label className="form-label">Jina Kamili *</label>
               <input className="input" type="text" value={form.name}
-                onChange={e => setForm({ ...form, name: e.target.value })}
-                placeholder="Jina la mteja" required autoFocus />
+                onChange={e => {
+                  const val = e.target.value.replace(/[^a-zA-Z\s\u00C0-\u024F'-]/g, '')
+                  setForm({ ...form, name: val })
+                }}
+                placeholder="Jina la mteja" required autoFocus maxLength={50} />
             </div>
             <div className="form-group">
               <label className="form-label">Namba ya Simu *</label>
               <input className="input" type="tel" value={form.phone}
-                onChange={e => setForm({ ...form, phone: e.target.value })}
-                placeholder="0700000000" required />
+                onChange={e => {
+                  const val = e.target.value.replace(/\D/g, '').slice(0, 10)
+                  setForm({ ...form, phone: val })
+                }}
+                placeholder="0700000000" required maxLength={10} inputMode="numeric" />
             </div>
             <div className="form-group">
               <label className="form-label">

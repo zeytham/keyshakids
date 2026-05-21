@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import api from '../utils/api'
 import toast from 'react-hot-toast'
 import { Plus, Edit, Trash2, ChevronDown, ChevronRight, Tag } from 'lucide-react'
-
+import { validateCategoryName } from '../utils/validation'
 const Modal = ({ title, onClose, children }) => (
   <div className="modal-overlay">
     <div className="modal-box" style={{ maxWidth: '440px' }}>
@@ -60,10 +60,13 @@ export default function Categories() {
 
   const handleSubmit = (e) => {
     e.preventDefault()
-    if (!form.name.trim()) return toast.error('Weka jina!')
-    if (modal === 'add-category') createCategory.mutate({ name: form.name })
-    else if (modal === 'edit-category') updateCategory.mutate({ id: selectedCategory.id, data: { name: form.name } })
-    else if (modal === 'add-subcategory') createSubCategory.mutate({ categoryId: selectedCategory.id, data: { name: form.name } })
+
+    const nameError = validateCategoryName(form.name)
+    if (nameError) return toast.error(nameError)
+
+    if (modal === 'add-category') createCategory.mutate({ name: form.name.trim() })
+    else if (modal === 'edit-category') updateCategory.mutate({ id: selectedCategory.id, data: { name: form.name.trim() } })
+    else if (modal === 'add-subcategory') createSubCategory.mutate({ categoryId: selectedCategory.id, data: { name: form.name.trim() } })
   }
 
   const toggleExpand = (id) => setExpanded(prev => ({ ...prev, [id]: !prev[id] }))
@@ -203,7 +206,7 @@ export default function Categories() {
               <input className="input" type="text" value={form.name}
                 onChange={e => setForm({ name: e.target.value })}
                 placeholder={modal === 'add-subcategory' ? 'Mfano: Dress, Shati, Sandali...' : 'Mfano: Nguo, Viatu, Mikobo...'}
-                autoFocus />
+                maxLength={50} autoFocus />
             </div>
             <button type="submit" className="btn btn-primary"
               style={{ width: '100%', justifyContent: 'center', padding: '10px' }}>

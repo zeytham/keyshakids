@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import api from '../utils/api'
 import toast from 'react-hot-toast'
 import { Plus, Edit, Power, Key, Users as UsersIcon, Phone, Shield, UserCheck, UserX } from 'lucide-react'
+import { validateName, validatePhone, validatePin, validatePassword } from '../utils/validation'
 
 const Modal = ({ title, onClose, children }) => (
   <div className="modal-overlay">
@@ -66,17 +67,56 @@ export default function Users() {
   })
 
   const handleSubmit = (e) => {
-    e.preventDefault()
-    if (modal === 'add') {
-      if (!form.name || !form.phone || !form.pin) return toast.error('Jaza taarifa zote!')
-      createUser.mutate({ name: form.name, phone: form.phone, pin: form.pin, password: form.password || undefined })
-    } else if (modal === 'edit') {
-      updateUser.mutate({ id: selected.id, data: { name: form.name, phone: form.phone } })
-    } else if (modal === 'reset-pin') {
-      if (!form.newPin) return toast.error('Weka PIN mpya!')
-      resetPin.mutate({ id: selected.id, newPin: form.newPin })
+  e.preventDefault()
+
+  if (modal === 'add') {
+    // Validate jina
+    const nameError = validateName(form.name)
+    if (nameError) return toast.error(nameError)
+
+    // Validate simu
+    const phoneError = validatePhone(form.phone)
+    if (phoneError) return toast.error(phoneError)
+
+    // Validate PIN
+    const pinError = validatePin(form.pin)
+    if (pinError) return toast.error(pinError)
+
+    // Validate password kama imewekwa
+    if (form.password) {
+      const passError = validatePassword(form.password)
+      if (passError) return toast.error(passError)
     }
+
+    createUser.mutate({
+      name: form.name.trim(),
+      phone: form.phone.trim(),
+      pin: form.pin.trim(),
+      password: form.password || undefined,
+    })
+
+  } else if (modal === 'edit') {
+    // Validate jina
+    const nameError = validateName(form.name)
+    if (nameError) return toast.error(nameError)
+
+    // Validate simu
+    const phoneError = validatePhone(form.phone)
+    if (phoneError) return toast.error(phoneError)
+
+    updateUser.mutate({
+      id: selected.id,
+      data: { name: form.name.trim(), phone: form.phone.trim() },
+    })
+
+  } else if (modal === 'reset-pin') {
+    // Validate PIN
+    const pinError = validatePin(form.newPin)
+    if (pinError) return toast.error(pinError)
+
+    resetPin.mutate({ id: selected.id, newPin: form.newPin.trim() })
   }
+}
 
   const owners = data?.filter(u => u.role === 'OWNER') || []
   const cashiers = data?.filter(u => u.role === 'CASHIER') || []
@@ -193,21 +233,38 @@ export default function Users() {
               <>
                 <div className="form-group">
                   <label className="form-label">Jina Kamili *</label>
-                  <input className="input" type="text" value={form.name}
-                    onChange={e => setForm({ ...form, name: e.target.value })}
-                    placeholder="Jina la mfanyakazi" autoFocus />
+                  // Jina — zuia nambari
+                    <input className="input" type="text" value={form.name}
+                      onChange={e => {
+                        const val = e.target.value.replace(/[^a-zA-Z\s\u00C0-\u024F'-]/g, '')
+                        setForm({ ...form, name: val })
+                      }}
+                      placeholder="Jina la mfanyakazi"
+                      maxLength={50} />
                 </div>
                 <div className="form-group">
                   <label className="form-label">Namba ya Simu *</label>
+                  // Simu — nambari tu, max 10
                   <input className="input" type="tel" value={form.phone}
-                    onChange={e => setForm({ ...form, phone: e.target.value })}
-                    placeholder="0700000000" />
+                    onChange={e => {
+                      const val = e.target.value.replace(/\D/g, '').slice(0, 10)
+                      setForm({ ...form, phone: val })
+                    }}
+                    placeholder="0700000000"
+                    maxLength={10}
+                    inputMode="numeric" />
                 </div>
                 <div className="form-group">
                   <label className="form-label">PIN (nambari 4-6) *</label>
-                  <input className="input" type="password" value={form.pin}
-                    onChange={e => setForm({ ...form, pin: e.target.value })}
-                    placeholder="••••" maxLength={6} inputMode="numeric"
+                 // PIN — nambari tu, max 6
+                <input className="input" type="password" value={form.pin}
+                  onChange={e => {
+                    const val = e.target.value.replace(/\D/g, '').slice(0, 6)
+                    setForm({ ...form, pin: val })
+                  }}
+                  placeholder="••••"
+                  maxLength={6}
+                  inputMode="numeric" 
                     style={{ letterSpacing: '6px', textAlign: 'center', fontSize: '18px' }} />
                 </div>
                 <div className="form-group">

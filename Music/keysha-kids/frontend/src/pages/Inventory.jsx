@@ -4,6 +4,7 @@ import api from '../utils/api'
 import toast from 'react-hot-toast'
 import { Plus, Search, Edit, Package, AlertTriangle, X, TrendingUp, Eye, Filter } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
+import { validateProductName, validatePrice, validateQuantity } from '../utils/validation'
 
 const Modal = ({ title, onClose, children, wide }) => (
   <div className="modal-overlay">
@@ -89,10 +90,38 @@ export default function Inventory() {
 
   const handleSubmit = (e) => {
     e.preventDefault()
-    if (modal === 'add') createProduct.mutate(form)
-    else if (modal === 'edit') updateProduct.mutate({ id: selected.id, data: form })
-    else if (modal === 'stock-in') addStock.mutate({ id: selected.id, data: stockForm })
-    else if (modal === 'adjust') adjustStock.mutate({ id: selected.id, data: adjustForm })
+
+    if (modal === 'add' || modal === 'edit') {
+      const nameError = validateProductName(form.name)
+      if (nameError) return toast.error(nameError)
+
+      if (!form.categoryId) return toast.error('Chagua category!')
+
+      const costError = validatePrice(form.costPrice)
+      if (costError) return toast.error(`Bei ya Kununulia: ${costError}`)
+
+      const sellError = validatePrice(form.sellingPrice)
+      if (sellError) return toast.error(`Bei ya Kuuzia: ${sellError}`)
+
+      if (parseFloat(form.costPrice) > parseFloat(form.sellingPrice)) {
+        return toast.error('Bei ya kuuzia lazima iwe zaidi ya bei ya kununulia!')
+      }
+
+      if (modal === 'add') createProduct.mutate(form)
+      else updateProduct.mutate({ id: selected.id, data: form })
+
+    } else if (modal === 'stock-in') {
+      const qtyError = validateQuantity(stockForm.quantity)
+      if (qtyError) return toast.error(`Idadi: ${qtyError}`)
+      if (parseInt(stockForm.quantity) <= 0) return toast.error('Idadi iwe zaidi ya 0!')
+      addStock.mutate({ id: selected.id, data: stockForm })
+
+    } else if (modal === 'adjust') {
+      const qtyError = validateQuantity(adjustForm.newQuantity)
+      if (qtyError) return toast.error(`Idadi: ${qtyError}`)
+      if (!adjustForm.reason?.trim()) return toast.error('Weka sababu ya marekebisho!')
+      adjustStock.mutate({ id: selected.id, data: adjustForm })
+    }
   }
 
   const openEdit = (product) => {
@@ -408,7 +437,10 @@ export default function Inventory() {
           <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
             <div className="form-group">
               <label className="form-label">Jina la Bidhaa *</label>
-              <input className="input" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="Mfano: Dress ya Msichana" required />
+              <input className="input" value={form.name}
+                onChange={e => setForm({ ...form, name: e.target.value })}
+                placeholder="Mfano: Dress ya Msichana"
+                maxLength={100} required />
             </div>
             <div className="grid-2">
               <div className="form-group">
@@ -439,11 +471,21 @@ export default function Inventory() {
             <div className="grid-2">
               <div className="form-group">
                 <label className="form-label">Bei ya Kununulia (TZS) *</label>
-                <input className="input" type="number" value={form.costPrice} onChange={e => setForm({ ...form, costPrice: e.target.value })} placeholder="0" required />
+                <input className="input" type="number" value={form.costPrice}
+                  onChange={e => {
+                    const val = e.target.value.replace(/[^0-9]/g, '')
+                    setForm({ ...form, costPrice: val })
+                  }}
+                  placeholder="0" min={1} required />
               </div>
               <div className="form-group">
                 <label className="form-label">Bei ya Kuuzia (TZS) *</label>
-                <input className="input" type="number" value={form.sellingPrice} onChange={e => setForm({ ...form, sellingPrice: e.target.value })} placeholder="0" required />
+                <input className="input" type="number" value={form.sellingPrice}
+                  onChange={e => {
+                    const val = e.target.value.replace(/[^0-9]/g, '')
+                    setForm({ ...form, sellingPrice: val })
+                  }}
+                  placeholder="0" min={1} required />
               </div>
             </div>
             <div className="grid-2">
@@ -477,7 +519,13 @@ export default function Inventory() {
             </div>
             <div className="form-group">
               <label className="form-label">Idadi ya Kuongeza *</label>
-              <input className="input" type="number" value={stockForm.quantity} onChange={e => setStockForm({ ...stockForm, quantity: e.target.value })} placeholder="0" required style={{ fontSize: '18px', fontWeight: 700, textAlign: 'center' }} />
+              <input className="input" type="number" value={stockForm.quantity}
+                onChange={e => {
+                  const val = e.target.value.replace(/[^0-9]/g, '')
+                  setStockForm({ ...stockForm, quantity: val })
+                }}
+                placeholder="0" min={1} required
+                style={{ fontSize: '18px', fontWeight: 700, textAlign: 'center' }} />
             </div>
             <div className="form-group">
               <label className="form-label">Bei Mpya ya Kununulia (optional)</label>

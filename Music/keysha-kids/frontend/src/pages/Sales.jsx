@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import api from '../utils/api'
 import toast from 'react-hot-toast'
 import { Plus, Search, Trash2, ShoppingCart, CheckCircle, Printer, User, Phone, X } from 'lucide-react'
-
+import { validateName, validatePhone } from '../utils/validation'
 const Modal = ({ title, onClose, children, wide }) => (
   <div className="modal-overlay">
     <div className="modal-box" style={{ maxWidth: wide ? '720px' : '440px' }}>
@@ -156,10 +156,23 @@ export default function Sales() {
 
   const handleSale = () => {
     if (cart.length === 0) return toast.error('Ongeza bidhaa!')
-    if (paymentType !== 'CASH' && !customerName.trim()) return toast.error('Weka jina la mteja!')
+
+    // Validate jina la mteja kama si cash
+    if (paymentType !== 'CASH') {
+      const nameError = validateName(customerName)
+      if (nameError) return toast.error(`Mteja: ${nameError}`)
+    }
+
+    // Validate simu kama imewekwa
+    if (customerPhone.trim()) {
+      const phoneError = validatePhone(customerPhone)
+      if (phoneError) return toast.error(`Simu: ${phoneError}`)
+    }
+
     if (paymentType === 'CASH' && paid < finalTotal) return toast.error('Pesa haitoshi!')
     if (paymentType === 'PARTIAL' && paid >= finalTotal) return toast.error('Malipo kamili — tumia Cash!')
     if (paymentType === 'PARTIAL' && paid <= 0) return toast.error('Weka pesa iliyolipwa!')
+
     createSale.mutate({
       items: cart.map(i => ({ productId: i.productId, quantity: i.quantity })),
       paymentType, paidAmount: paymentType === 'CREDIT' ? 0 : paid,
@@ -534,14 +547,25 @@ export default function Sales() {
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                       <div className="input-wrap">
                         <span className="input-icon"><User size={13} /></span>
-                        <input className="input" value={customerName} onChange={e => setCustomerName(e.target.value)}
-                          placeholder={paymentType !== 'CASH' ? 'Jina la mteja *' : 'Jina la mteja (optional)'}
-                          style={{ paddingLeft: '34px' }} />
+                        <input className="input" value={customerName}
+                        onChange={e => {
+                          const val = e.target.value.replace(/[^a-zA-Z\s\u00C0-\u024F'-]/g, '')
+                          setCustomerName(val)
+                        }}
+                        placeholder={paymentType !== 'CASH' ? 'Jina la mteja *' : 'Jina la mteja (optional)'}
+                        style={{ paddingLeft: '34px' }}
+                        maxLength={50} />
                       </div>
                       <div className="input-wrap">
                         <span className="input-icon"><Phone size={13} /></span>
-                        <input className="input" type="tel" value={customerPhone} onChange={e => setCustomerPhone(e.target.value)}
-                          placeholder="Simu (optional)" style={{ paddingLeft: '34px' }} />
+                        <input className="input" type="tel" value={customerPhone}
+                        onChange={e => {
+                          const val = e.target.value.replace(/\D/g, '').slice(0, 10)
+                          setCustomerPhone(val)
+                        }}
+                        placeholder="Simu (optional)"
+                        style={{ paddingLeft: '34px' }}
+                        maxLength={10} inputMode="numeric" />
                       </div>
                     </div>
                   </div>
@@ -670,11 +694,25 @@ export default function Sales() {
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                     <div className="input-wrap">
                       <span className="input-icon"><User size={12} /></span>
-                      <input className="input" value={customerName} onChange={e => setCustomerName(e.target.value)} placeholder={paymentType !== 'CASH' ? 'Jina *' : 'Jina (optional)'} style={{ fontSize: '12px', paddingLeft: '32px' }} />
+                      <input className="input" value={customerName}
+                        onChange={e => {
+                          const val = e.target.value.replace(/[^a-zA-Z\s\u00C0-\u024F'-]/g, '')
+                          setCustomerName(val)
+                        }}
+                        placeholder={paymentType !== 'CASH' ? 'Jina *' : 'Jina (optional)'}
+                        style={{ fontSize: '12px', paddingLeft: '32px' }}
+                        maxLength={50} />
                     </div>
                     <div className="input-wrap">
                       <span className="input-icon"><Phone size={12} /></span>
-                      <input className="input" type="tel" value={customerPhone} onChange={e => setCustomerPhone(e.target.value)} placeholder="Simu (optional)" style={{ fontSize: '12px', paddingLeft: '32px' }} />
+                      <input className="input" type="tel" value={customerPhone}
+                        onChange={e => {
+                          const val = e.target.value.replace(/\D/g, '').slice(0, 10)
+                          setCustomerPhone(val)
+                        }}
+                        placeholder="Simu (optional)"
+                        style={{ fontSize: '12px', paddingLeft: '32px' }}
+                        maxLength={10} inputMode="numeric" />
                     </div>
                   </div>
                 </div>
