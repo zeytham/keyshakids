@@ -1,6 +1,6 @@
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { useAuth } from './context/AuthContext'
-
+import Settings from './pages/Settings'
 // Pages
 import Login from './pages/Login'
 import Dashboard from './pages/Dashboard'
@@ -59,6 +59,7 @@ function App() {
         <Route path="customers" element={<Customers />} />
         <Route path="debts" element={<Debts />} />
         <Route path="/backup" element={<Backup />} />
+        <Route path="/settings" element={<Settings />} />
         <Route path="reports" element={
           <ProtectedRoute ownerOnly>
             <Reports />

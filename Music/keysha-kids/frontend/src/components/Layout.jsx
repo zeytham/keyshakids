@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
+import { Settings as SettingsIcon } from 'lucide-react'
 import {
   LayoutDashboard, Package, ShoppingCart, Users, CreditCard,
   BarChart3, LogOut, Menu, X, Tag, Bell, Settings, ChevronRight
@@ -17,6 +18,7 @@ const navItems = [
   { path: '/categories', icon: Tag, label: 'Categories', ownerOnly: true },
   { path: '/users', icon: Settings, label: 'Wafanyakazi', ownerOnly: true },
   { path: '/backup', icon: Database, label: 'Backup', ownerOnly: true },
+  { path: '/settings', icon: SettingsIcon, label: 'Mipangilio' }
 ]
 
 export default function Layout() {

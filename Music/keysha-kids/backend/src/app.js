@@ -7,6 +7,7 @@ const rateLimit = require('express-rate-limit');
 const { errorHandler, notFound } = require('./middleware/errorHandler');
 const { RATE_LIMIT_WINDOW_MS, RATE_LIMIT_MAX } = require('./config/constants');
 const backupRoutes = require('./routes/backup.routes')
+const settingsRoutes = require('./routes/settings.routes')
 const app = express();
 // Trust Railway proxy
 app.set('trust proxy', 1)
@@ -72,6 +73,7 @@ app.use('/api/customers', require('./routes/customers.routes'));
 app.use('/api/debts', require('./routes/debts.routes'));
 app.use('/api/reports', require('./routes/reports.routes'));
 app.use('/api/backups', backupRoutes)
+app.use('/api/settings', settingsRoutes)
 
 // ============================================================
 // ERROR HANDLERS
